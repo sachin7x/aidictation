@@ -1,0 +1,33 @@
+name: Security
+
+on:
+  pull_request:
+    paths: ["web/**","server/**","packages/**","supabase/**",".github/workflows/security.yml"]
+  push:
+    branches: ["main","feat/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secret-pattern scan
+        run: |
+          ! grep -RInE '(sk-[A-Za-z0-9_-]{20,}|BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|SUPABASE_SERVICE_ROLE_KEY=)'             web server packages supabase --exclude-dir=node_modules --exclude='*.lock'
+      - name: Dependency manifests
+        run: |
+          test -f web/package.json
+          test -f server/package.json
+          test -f packages/contracts/src/flow.ts
+      - name: Workflow file sanity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in Path(".github/workflows").glob("*.y*ml"):
+              text = path.read_text(encoding="utf-8")
+              assert "name:" in text, path
+          print("Workflow files contain names")
+          PY

@@ -26,6 +26,8 @@ jobs:
           python -m pip install pytest
       - name: Run CATCH reward/verifier unit tests
         working-directory: .catch
+        env:
+          PYTHONPATH: .
         run: pytest -q tests/rewards/test_pc_swe_reward_unit.py tests/rewards/test_pc_swe_reward_parsing.py
       - name: Execute C0-C6 isolation probe
         run: python scripts/catch/run_c0_c6.py

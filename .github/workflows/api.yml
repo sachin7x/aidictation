@@ -1,0 +1,37 @@
+name: Platform API
+
+on:
+  pull_request:
+    paths: ["server/**","packages/contracts/**","supabase/**"]
+  push:
+    branches: ["main","feat/**"]
+    paths: ["server/**","packages/contracts/**","supabase/**"]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck
+
+  sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate migration files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          migrations = sorted(Path("supabase/migrations").glob("*.sql"))
+          assert migrations, "No Supabase migrations found"
+          for path in migrations:
+              assert path.read_text(encoding="utf-8").strip(), f"Empty migration: {path}"
+          print(f"Validated {len(migrations)} migration files")
+          PY

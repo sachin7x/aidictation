@@ -1,24 +1,23 @@
-# Native integration map
+# Native integration contract
 
-## VERIFIED from source inspection
+The native applications remain the execution layer for microphone capture, offline recognition, foreground-app insertion, accessibility/clipboard APIs, local recovery and platform-specific permissions.
 
-### Apple
-The shared Apple layer contains authentication, Supabase access, transcription orchestration, dictionary/context managers, history, subscription management, keychain-backed auth storage, and realtime transcription support. macOS additionally contains CommandModeManager, application-context helpers, clipboard insertion, hotkey handling, local Parakeet transcription, and VAD.
+The web/server platform owns:
+- identity and session synchronization
+- dictionary, snippets and styles synchronization
+- server-owned usage and entitlement state
+- transforms
+- meeting persistence and retrieval
+- capability-scoped MCP
+- independent verification events
 
-### Windows
-The Windows client contains AuthService, TranscriptionService, LanguagePostProcessService, HistoryService, SettingsService, hotkey/input services, local Whisper support, audio recovery/checkpointing, and usage reporting.
+A native adapter should:
+1. authenticate with the existing Supabase session;
+2. identify itself with a stable device ID and platform;
+3. upload revisioned dictionary/snippet/style changes;
+4. consume /api/sync?cursor=... until caught up;
+5. never treat a client-side paid flag as authoritative;
+6. preserve raw recognition output when cleanup/transforms fail;
+7. treat command completion as successful only after native execution acknowledgement and verifier evidence.
 
-### Android
-The Android client contains Supabase-backed authentication, subscription/usage accounting, Room persistence, transcription API/repository layers, local Parakeet support, command client, language post-processing, overlay/accessibility insertion, and tests for migration/recovery/transport behavior.
-
-## Integration decision
-
-Do not duplicate these pipelines in the web server. The platform server should provide identity, synchronized user configuration, entitlements, provider policy, transforms/meeting services, and verification. Device-native audio capture and offline recognition remain on-device.
-
-## Critical convergence point
-
-The existing native transcription architecture already snapshots vocabulary, replacements, expansions, language settings, context rules, and cleanup configuration before an attempt. The new API contract must preserve that context boundary rather than reconstructing it after audio upload.
-
-## Unknown
-
-Exact cross-platform parity of all feature flags and provider configuration still requires source-level diffing of the remaining client files and executable builds.
+Existing Apple, Windows and Android implementations already provide the device-side audio/transcription and subscription primitives this adapter should wrap.

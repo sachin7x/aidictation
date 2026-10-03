@@ -1,0 +1,31 @@
+name: CATCH regression
+
+on:
+  pull_request:
+    paths: ["scripts/catch/**","packages/contracts/src/catch.ts","server/verifier/**","docs/verifier/**"]
+  push:
+    branches: ["main","feat/**"]
+    paths: ["scripts/catch/**","packages/contracts/src/catch.ts","server/verifier/**","docs/verifier/**"]
+
+jobs:
+  catch-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: THUAIS-Lab/CATCH
+          path: .catch
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CATCH test dependencies
+        working-directory: .catch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+      - name: Run CATCH reward/verifier unit tests
+        working-directory: .catch
+        run: pytest -q tests/rewards/test_pc_swe_reward_unit.py tests/rewards/test_pc_swe_reward_parsing.py
+      - name: Execute C0-C6 isolation probe
+        run: python scripts/catch/run_c0_c6.py

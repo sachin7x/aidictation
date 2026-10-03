@@ -1,0 +1,1 @@
+export type CommandIntent="transform"|"insert"|"delete_selection"|"navigate"|"open_app"|"unknown";export interface CommandRequest{intent:CommandIntent;targetText?:string;instruction?:string;parameters:Record<string,string>};export interface CommandDecision{allowed:boolean;reason:string;requiresConfirmation:boolean;intent:CommandIntent}

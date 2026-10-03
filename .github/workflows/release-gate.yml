@@ -1,0 +1,38 @@
+name: Release gate
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Archive web build
+        run: tar -czf ../web-release.tgz .next
+
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release surfaces
+        run: |
+          test -f .github/workflows/release-macos.yml
+          test -f .github/workflows/android-play-release.yml
+          test -f .github/workflows/ios-appstore-connect.yml
+          test -f .github/workflows/windows-build.yml
+          test -f supabase/migrations/202610030001_flow_platform.sql
+          test -f supabase/migrations/202610030002_meetings_billing.sql
+          test -f docs/product/india-launch.md
+          echo "Release surface manifest verified"

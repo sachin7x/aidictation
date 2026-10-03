@@ -1,10 +1,16 @@
 name: Web
+
 on:
   pull_request:
-    paths: ["web/**"]
+    paths:
+      - "web/**"
+      - "packages/contracts/**"
   push:
     branches: ["main","feat/**"]
-    paths: ["web/**"]
+    paths:
+      - "web/**"
+      - "packages/contracts/**"
+
 jobs:
   build:
     runs-on: ubuntu-latest

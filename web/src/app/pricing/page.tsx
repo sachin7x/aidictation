@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { brand } from "@/config/brand";
+export default function PricingPage(){return <main className="container section"><Link href="/">← Home</Link><h1 style={{fontSize:"64px",letterSpacing:"-.05em"}}>Pricing</h1><p className="sectionLead">Pricing is configuration-driven. Replace plan details in brand.ts when the commercial model is finalized.</p><div className="grid">{Object.values(brand.pricing).map(plan=><article className="card" key={plan.name}><h3>{plan.name}</h3><p style={{fontSize:"28px",color:"#111"}}>{plan.price}</p><p>Entitlements are enforced server-side; this page is presentation only.</p></article>)}</div></main>}

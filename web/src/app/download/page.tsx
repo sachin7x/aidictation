@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { brand } from "@/config/brand";
+const platforms=[["macOS — Apple Silicon",brand.downloads.macAppleSilicon],["macOS — Intel",brand.downloads.macIntel],["Windows",brand.downloads.windows],["iPhone / iPad",brand.downloads.ios],["Android",brand.downloads.android]];
+export default function DownloadPage(){return <main className="container section"><Link href="/">← Home</Link><h1 style={{fontSize:"64px",letterSpacing:"-.05em"}}>Download</h1><p className="sectionLead">Release links are configuration-driven. Production links must resolve to verified GitHub Release artifacts or the appropriate app store.</p><div className="grid">{platforms.map(([name,href])=><a className="card" href={href} key={name}><h3>{name}</h3><p>Open release target →</p></a>)}</div></main>}

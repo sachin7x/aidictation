@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: THUAIS-Lab/CATCH
+          repository: sachin7x/CATCH
           path: .catch
       - uses: actions/setup-python@v5
         with:

@@ -53,7 +53,9 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     private let audioEngine = XAIRealtimeVoiceAudioEngine()
     private var webSocket: URLSessionWebSocketTask?
     private var connectionTask: Task<Void, Never>?
+    private var connectionTimeoutTask: Task<Void, Never>?
     private var assistantMessageID: UUID?
+    private var userMessageID: UUID?
     private var hasStartedAudio = false
 
     var isActive: Bool {
@@ -79,6 +81,14 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
         messages.removeAll()
         assistantMessageID = nil
         hasStartedAudio = false
+        userMessageID = nil
+
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 45_000_000_000)
+            guard let self, self.state == .connecting else { return }
+            self.fail("The voice connection timed out. Check your connection and try again.")
+        }
 
         connectionTask?.cancel()
         connectionTask = Task { [weak self] in
@@ -96,6 +106,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     func stop() {
         connectionTask?.cancel()
         connectionTask = nil
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
         audioEngine.stop()
         hasStartedAudio = false
         assistantMessageID = nil
@@ -263,6 +275,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
             sendSessionUpdate()
 
         case "session.updated":
+            connectionTimeoutTask?.cancel()
+            connectionTimeoutTask = nil
             guard !hasStartedAudio else { return }
             do {
                 let socket = webSocket
@@ -285,11 +299,14 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
             audioEngine.interruptPlayback()
             if state == .speaking { state = .connected }
 
+        case "conversation.item.input_audio_transcription.updated":
+            if let transcript = event["transcript"] as? String {
+                updateUserTranscript(transcript, isFinal: false)
+            }
+
         case "conversation.item.input_audio_transcription.completed":
-            let transcript = (event["transcript"] as? String ?? "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                messages.append(XAIRealtimeVoiceMessage(role: .user, text: transcript))
+            if let transcript = event["transcript"] as? String {
+                updateUserTranscript(transcript, isFinal: true)
             }
 
         case "response.created":
@@ -298,8 +315,7 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
             assistantMessageID = message.id
             messages.append(message)
 
-        case "response.output_audio_transcript.delta", "response.audio_transcript.delta",
-             "response.output_text.delta", "response.text.delta":
+        case "response.output_audio_transcript.delta", "response.audio_transcript.delta":
             if let delta = event["delta"] as? String, !delta.isEmpty {
                 appendAssistantText(delta)
             }
@@ -314,7 +330,10 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
                 replaceAssistantText(transcript)
             }
 
-        case "response.output_audio.done", "response.done":
+        case "response.output_audio.done":
+            break
+
+        case "response.done":
             if state == .speaking { state = .connected }
             assistantMessageID = nil
 
@@ -340,6 +359,15 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
                 "voice": voice.apiValue,
                 "instructions": "You are AI Dictation's live voice assistant. Be concise, accurate, and warm. Understand Hindi, English, and natural Hinglish. Reply in the language the user is speaking unless they ask otherwise.",
                 "turn_detection": ["type": "server_vad"],
+                "audio": [
+                    "input": [
+                        "format": ["type": "audio/pcm", "rate": 24000],
+                        "transcription": ["model": "grok-transcribe"],
+                    ],
+                    "output": [
+                        "format": ["type": "audio/pcm", "rate": 24000],
+                    ],
+                ],
             ],
         ])
     }
@@ -356,6 +384,22 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
                 self?.handleTransportError(error)
             }
         }
+    }
+
+    private func updateUserTranscript(_ text: String, isFinal: Bool) {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+
+        if let id = userMessageID,
+           let index = messages.firstIndex(where: { $0.id == id }) {
+            messages[index].text = value
+        } else {
+            let message = XAIRealtimeVoiceMessage(role: .user, text: value)
+            userMessageID = message.id
+            messages.append(message)
+        }
+
+        if isFinal { userMessageID = nil }
     }
 
     private func appendAssistantText(_ text: String) {
@@ -383,6 +427,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     }
 
     private func fail(_ message: String) {
+        connectionTimeoutTask?.cancel()
+        connectionTimeoutTask = nil
         audioEngine.stop()
         hasStartedAudio = false
         webSocket?.cancel(with: .goingAway, reason: nil)
@@ -472,6 +518,7 @@ private final class XAIRealtimeVoiceAudioEngine {
         let inputNode = audioEngine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0 else {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
             throw VoiceAgentError.invalidServerResponse
         }
 

@@ -148,8 +148,10 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
 
     private func connect() async throws {
         try await requestMicrophonePermission()
+        try Task.checkCancellation()
 
         let accessToken = try await AuthManager.shared.accessToken()
+        try Task.checkCancellation()
         let token = try await fetchEphemeralToken(accessToken: accessToken)
         try Task.checkCancellation()
 
@@ -427,6 +429,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     }
 
     private func fail(_ message: String) {
+        connectionTask?.cancel()
+        connectionTask = nil
         connectionTimeoutTask?.cancel()
         connectionTimeoutTask = nil
         audioEngine.stop()

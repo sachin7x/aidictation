@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import Foundation
 import WhisperMateShared
 
@@ -465,7 +466,7 @@ private final class XAIRealtimeVoiceAudioEngine {
             audioEngine.inputNode.isVoiceProcessingAGCEnabled = true
             audioEngine.inputNode.isVoiceProcessingBypassed = false
         } catch {
-            DebugLog.warning("Voice processing unavailable for xAI voice session", context: "XAIVoice")
+            // Continue without hardware echo cancellation on unsupported routes.
         }
 
         let inputNode = audioEngine.inputNode

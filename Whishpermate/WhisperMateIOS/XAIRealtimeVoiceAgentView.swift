@@ -179,7 +179,6 @@ struct XAIRealtimeVoiceAgentView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(conversation.state == .connecting)
         .accessibilityHint("Starts or ends a live voice conversation with Grok.")
     }
 

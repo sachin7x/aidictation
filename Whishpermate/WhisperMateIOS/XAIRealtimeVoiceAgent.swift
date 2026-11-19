@@ -404,7 +404,9 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     }
 
     private func isCurrentResponse(_ event: [String: Any]) -> Bool {
-        guard let eventID = event["response_id"] as? String else { return true }
+        let eventID = event["response_id"] as? String
+            ?? (event["response"] as? [String: Any])?["id"] as? String
+        guard let eventID else { return true }
         return currentResponseID == eventID
     }
 

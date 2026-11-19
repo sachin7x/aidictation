@@ -508,7 +508,7 @@ struct ContentView: View {
                 historySearchField
 
                 Button {
-                    guard !showKeyboardReturnScreen else { return }
+                    guard !showKeyboardReturnScreen, !inlineRecording.isActive else { return }
                     showVoiceAgent = true
                 } label: {
                     Image(systemName: "waveform")
@@ -521,6 +521,7 @@ struct ContentView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .disabled(inlineRecording.isActive)
                 .accessibilityLabel("Voice Assistant")
 
                 Button {

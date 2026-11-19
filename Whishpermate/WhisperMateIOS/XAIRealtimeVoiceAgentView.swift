@@ -143,8 +143,8 @@ struct XAIRealtimeVoiceAgentView: View {
 
     private var composer: some View {
         HStack(spacing: 10) {
-            TextField("Send a text message…", text: $draft, axis: .vertical)
-                .lineLimit(1...4)
+            TextField("Send a text message…", text: $draft)
+                .lineLimit(1)
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendText)

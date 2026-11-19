@@ -1,0 +1,47 @@
+name: iOS Build
+
+on:
+  pull_request:
+    paths:
+      - "Whishpermate/**"
+      - ".github/workflows/ios-build.yml"
+  push:
+    branches: ["feat/**"]
+    paths:
+      - "Whishpermate/**"
+      - ".github/workflows/ios-build.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build iOS app for Simulator
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          xcode-select -p
+          xcodebuild -version
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Whishpermate/Whispermate.xcodeproj \
+            -scheme WhisperMateIOS
+
+      - name: Build iOS app
+        run: |
+          xcodebuild build \
+            -project Whishpermate/Whispermate.xcodeproj \
+            -scheme WhisperMateIOS \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

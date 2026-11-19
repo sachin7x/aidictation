@@ -28,6 +28,7 @@ struct ContentView: View {
     @StateObject private var inlineRecording = InlineRecordingCoordinator()
     @State private var showRecordingSheet = false
     @State private var showSettings = false
+    @State private var showVoiceAgent = false
     @State private var recordingSheetID = UUID()
     @State private var selectedRecording: Recording?
     @State private var showTextRules = false
@@ -508,6 +509,22 @@ struct ContentView: View {
 
                 Button {
                     guard !showKeyboardReturnScreen else { return }
+                    showVoiceAgent = true
+                } label: {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Voice Assistant")
+
+                Button {
+                    guard !showKeyboardReturnScreen else { return }
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
@@ -542,6 +559,9 @@ struct ContentView: View {
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .sheet(isPresented: $showSettings) {
             settingsView
+        }
+        .sheet(isPresented: $showVoiceAgent) {
+            XAIRealtimeVoiceAgentView()
         }
         .sheet(item: $selectedRecording) { recording in
             RecordingSheetView(historyManager: historyManager, dictionaryManager: dictionaryManager, toneStyleManager: toneStyleManager, shortcutManager: shortcutManager, recording: recording)

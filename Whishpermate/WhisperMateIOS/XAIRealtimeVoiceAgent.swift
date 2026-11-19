@@ -55,6 +55,7 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
     private var connectionTask: Task<Void, Never>?
     private var connectionTimeoutTask: Task<Void, Never>?
     private var assistantMessageID: UUID?
+    private var currentResponseID: String?
     private var userMessageID: UUID?
     private var hasStartedAudio = false
 
@@ -80,6 +81,7 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
         state = .connecting
         messages.removeAll()
         assistantMessageID = nil
+        currentResponseID = nil
         hasStartedAudio = false
         userMessageID = nil
 
@@ -111,6 +113,7 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
         audioEngine.stop()
         hasStartedAudio = false
         assistantMessageID = nil
+        currentResponseID = nil
         webSocket?.cancel(with: .normalClosure, reason: nil)
         webSocket = nil
         state = .disconnected
@@ -123,6 +126,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
         if state == .speaking {
             sendJSON(["type": "response.cancel"])
             audioEngine.interruptPlayback()
+            assistantMessageID = nil
+            currentResponseID = nil
             state = .connected
         }
 
@@ -299,7 +304,11 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
 
         case "input_audio_buffer.speech_started":
             audioEngine.interruptPlayback()
-            if state == .speaking { state = .connected }
+            if state == .speaking {
+                assistantMessageID = nil
+                currentResponseID = nil
+                state = .connected
+            }
 
         case "conversation.item.input_audio_transcription.updated":
             if let transcript = event["transcript"] as? String {
@@ -312,22 +321,26 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
             }
 
         case "response.created":
+            currentResponseID = (event["response"] as? [String: Any])?["id"] as? String
             state = .speaking
             let message = XAIRealtimeVoiceMessage(role: .assistant, text: "")
             assistantMessageID = message.id
             messages.append(message)
 
         case "response.output_audio_transcript.delta", "response.audio_transcript.delta":
+            guard isCurrentResponse(event) else { return }
             if let delta = event["delta"] as? String, !delta.isEmpty {
                 appendAssistantText(delta)
             }
 
         case "response.output_audio.delta", "response.audio.delta":
+            guard isCurrentResponse(event) else { return }
             if let audio = event["delta"] as? String {
                 audioEngine.playAudioDelta(base64: audio)
             }
 
         case "response.output_audio_transcript.done":
+            guard isCurrentResponse(event) else { return }
             if let transcript = event["transcript"] as? String {
                 replaceAssistantText(transcript)
             }
@@ -336,8 +349,10 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
             break
 
         case "response.done":
+            guard isCurrentResponse(event) else { return }
             if state == .speaking { state = .connected }
             assistantMessageID = nil
+            currentResponseID = nil
 
         case "error":
             let detail = (event["error"] as? [String: Any])?["message"] as? String
@@ -386,6 +401,11 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
                 self?.handleTransportError(error)
             }
         }
+    }
+
+    private func isCurrentResponse(_ event: [String: Any]) -> Bool {
+        guard let eventID = event["response_id"] as? String else { return true }
+        return currentResponseID == eventID
     }
 
     private func updateUserTranscript(_ text: String, isFinal: Bool) {
@@ -437,6 +457,8 @@ final class XAIRealtimeVoiceAgentConversation: ObservableObject {
         hasStartedAudio = false
         webSocket?.cancel(with: .goingAway, reason: nil)
         webSocket = nil
+        assistantMessageID = nil
+        currentResponseID = nil
         state = .failed(message)
     }
 }
